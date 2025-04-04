@@ -5,15 +5,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Product
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])  # ✅ Require authentication
 def create_product(request):
-    data = request.data  # ✅ DRF automatically parses JSON
-    name = data.get("name")
-    description = data.get("description", "")  # ✅ Default to empty string if missing
-    price = data.get("price")
+    parser_classes = (MultiPartParser, FormParser)  # ✅ Allow file uploads
+
+    name = request.data.get("name")
+    description = request.data.get("description", "")
+    price = request.data.get("price")
+    image = request.FILES.get("image")  # ✅ Get uploaded image
 
     if not name or price is None:
         return JsonResponse(
@@ -21,12 +24,13 @@ def create_product(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    product = Product.objects.create(name=name, description=description, price=price)
+    product = Product.objects.create(name=name, description=description, price=price, image=image)
+
     return JsonResponse(
-        {"message": "Product created successfully", "id": product.id},
+        {"message": "Product created successfully", "id": product.id,
+         "image_url": product.image.url if product.image else None},
         status=status.HTTP_201_CREATED
     )
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])  # ✅ Require authentication
